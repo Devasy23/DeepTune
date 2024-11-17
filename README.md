@@ -1,15 +1,15 @@
-# DeepTurne
+# DeepTune
 
 ## Description
 
-DeepTurne is an open source Python package for fine-tuning computer vision (CV) based deep models using Siamese architecture with a triplet loss function. The package supports various model backbones and provides tools for data preprocessing and evaluation metrics.
+DeepTune is an open source Python package for fine-tuning computer vision (CV) based deep models using Siamese architecture with a triplet loss function. The package supports various model backbones and provides tools for data preprocessing and evaluation metrics.
 
 ## Installation
 
 To install the package, use the following command:
 
 ```bash
-pip install deepturne
+pip install DeepTune
 ```
 
 ## Usage
@@ -19,8 +19,8 @@ pip install deepturne
 Here is an example of how to use the package for fine-tuning models with Siamese architecture and triplet loss:
 
 ```python
-import deepturne
-from deepturne import triplet_loss, backbones, data_preprocessing, evaluation_metrics
+import DeepTune
+from DeepTune import triplet_loss, backbones, data_preprocessing, evaluation_metrics
 
 # Load and preprocess data
 data = data_preprocessing.load_data('path/to/dataset')

@@ -1,5 +1,5 @@
 import tensorflow as tf
-from deepturne import triplet_loss, backbones, data_preprocessing, evaluation_metrics, datasets
+from DeepTune import triplet_loss, backbones, data_preprocessing, evaluation_metrics, datasets
 
 def test_finetuning():
     # Load and preprocess data
