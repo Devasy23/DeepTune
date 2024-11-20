@@ -7,11 +7,11 @@ from tensorflow.keras.callbacks import ReduceLROnPlateau, EarlyStopping, ModelCh
 from wandb.integration.keras import WandbMetricsLogger
 import wandb
 
-from deeptune.backbones.resnet import ResNetBackbone
-from deeptune.architectures.siamese import SiameseArchitecture
-from deeptune.losses.triplet_loss import triplet_loss
-from deeptune.datagenerators.triplet_data_generator import TripletDataGenerator
-from deeptune.callbacks.finetune_callback import FineTuneCallback
+from deeptuner.backbones.resnet import ResNetBackbone
+from deeptuner.architectures.siamese import SiameseArchitecture
+from deeptuner.losses.triplet_loss import triplet_loss
+from deeptuner.datagenerators.triplet_data_generator import TripletDataGenerator
+from deeptuner.callbacks.finetune_callback import FineTuneCallback
 
 # Load configuration from JSON file
 with open('config.json', 'r') as config_file:

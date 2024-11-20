@@ -1,15 +1,15 @@
-# DeepTune
+# DeepTuner
 
 ## Description
 
-DeepTune is an open source Python package for fine-tuning computer vision (CV) based deep models using Siamese architecture with a triplet loss function. The package supports various model backbones and provides tools for data preprocessing and evaluation metrics.
+DeepTuner is an open source Python package for fine-tuning computer vision (CV) based deep models using Siamese architecture with a triplet loss function. The package supports various model backbones and provides tools for data preprocessing and evaluation metrics.
 
 ## Installation
 
 To install the package, use the following command:
 
 ```bash
-pip install DeepTune
+pip install DeepTuner
 ```
 
 ## Usage
@@ -28,11 +28,11 @@ from tensorflow.keras.callbacks import ReduceLROnPlateau, EarlyStopping, ModelCh
 from wandb.integration.keras import WandbMetricsLogger
 import wandb
 
-from deeptune.backbones.resnet import ResNetBackbone
-from deeptune.architectures.siamese import SiameseArchitecture
-from deeptune.losses.triplet_loss import triplet_loss
-from deeptune.datagenerators.triplet_data_generator import TripletDataGenerator
-from deeptune.callbacks.finetune_callback import FineTuneCallback
+from deeptuner.backbones.resnet import ResNetBackbone
+from deeptuner.architectures.siamese import SiameseArchitecture
+from deeptuner.losses.triplet_loss import triplet_loss
+from deeptuner.datagenerators.triplet_data_generator import TripletDataGenerator
+from deeptuner.callbacks.finetune_callback import FineTuneCallback
 
 # Load configuration from JSON file
 with open('config.json', 'r') as config_file:
@@ -162,7 +162,7 @@ To make it easier to experiment with different hyperparameter settings, you can 
     "learning_rate": 0.001,
     "patience": 5,
     "unfreeze_layers": 10,
-    "project_name": "DeepTune"
+    "project_name": "DeepTuner"
 }
 ```
 

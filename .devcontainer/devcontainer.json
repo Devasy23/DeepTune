@@ -1,6 +1,6 @@
 {
   "tasks": {
     "build": "pip install -r requirements.txt",
-    "launch": "python -m deeptune.run"
+    "launch": "python -m deeptuner.run"
   }
 }

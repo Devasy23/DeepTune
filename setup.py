@@ -1,14 +1,14 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='DeepTune',
+    name='DeepTuner',
     version='0.1.0',
     author='Devasy Patel',
     author_email='patel.devasy.23@gmail.com',
     description='A package for fine-tuning deep learning models with Siamese architecture and triplet loss',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
-    url='https://github.com/Devasy23/DeepTune',
+    url='https://github.com/Devasy23/DeepTuner',
     packages=find_packages(),
     classifiers=[
         'Development Status :: 3 - Alpha',
