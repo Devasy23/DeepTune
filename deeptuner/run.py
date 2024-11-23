@@ -1,35 +1,39 @@
-import os
-import json
-from sklearn.model_selection import train_test_split
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.metrics import Mean
-from tensorflow.keras.callbacks import ReduceLROnPlateau, EarlyStopping, ModelCheckpoint
-from wandb.integration.keras import WandbMetricsLogger
+from wandb.integration.keras import WandbMetricsLogger, WandbModelCheckpoint
 import wandb
+import os
+from sklearn.model_selection import train_test_split
+from keras.optimizers import Adam
+from keras.metrics import Mean
+from keras.layers import Input
+from keras.models import Model
+from keras.applications.resnet50 import ResNet50
+from keras.applications.resnet50 import preprocess_input
+from keras.callbacks import ReduceLROnPlateau, EarlyStopping, ModelCheckpoint
+from deeptuner.utils import get_embedding_module, get_siamese_network
+from deeptuner.siamese_network import SiameseModel
+from deeptuner.tripletdatagenerator import TripletDataGenerator
 
-from deeptuner.backbones.resnet import ResNetBackbone
-from deeptuner.architectures.siamese import SiameseArchitecture
-from deeptuner.losses.triplet_loss import triplet_loss
-from deeptuner.datagenerators.triplet_data_generator import TripletDataGenerator
-from deeptuner.callbacks.finetune_callback import FineTuneCallback
+from tensorflow import keras
+from tensorflow.keras import layers
+from tensorflow.keras.layers import Input, Lambda, Dense, Flatten
+from tensorflow.keras.models import Model
 
-# Load configuration from JSON file
-with open('config.json', 'r') as config_file:
-    config = json.load(config_file)
-
-data_dir = config['data_dir']
-image_size = tuple(config['image_size'])
-batch_size = config['batch_size']
-margin = config['margin']
-epochs = config['epochs']
-initial_epoch = config['initial_epoch']
-learning_rate = config['learning_rate']
-patience = config['patience']
-unfreeze_layers = config['unfreeze_layers']
+data_dir = 'datasets/lfw_processed'
+image_size = (224, 224)
+batch_size = 2  # Adjust the batch size for the small dataset
+margin = 10.0
 
 # Initialize W&B
-wandb.init(project=config['project_name'], config=config)
-
+wandb.init(project="FaceRec", config={
+    "learning_rate": 0.001,
+    "epochs": 20,
+    "batch_size": 2,
+    "optimizer": "Adam",
+    "architecture": "ResNet50",
+    "dataset": "lfw",
+    "loss": "TripletLoss",
+    "margin": 10.0
+})
 # Load and preprocess the data
 image_paths = []
 labels = []
@@ -62,20 +66,46 @@ val_generator = TripletDataGenerator(val_paths, val_labels, batch_size, image_si
 assert len(train_generator) > 0, "Training generator is empty!"
 assert len(val_generator) > 0, "Validation generator is empty!"
 
-# Create the embedding model and freeze layers
-backbone = ResNetBackbone(input_shape=image_size + (3,))
-embedding_model = backbone.create_model()
+class FineTuneCallback(keras.callbacks.Callback):
+    def __init__(self, base_model, patience=5, unfreeze_layers=10):
+        super(FineTuneCallback, self).__init__()
+        self.base_model = base_model
+        self.patience = patience
+        self.unfreeze_layers = unfreeze_layers
+        self.best_weights = None
+        self.best_loss = float('inf')
+        self.wait = 0
 
+    def on_epoch_end(self, epoch, logs=None):
+        current_loss = logs.get('val_loss')
+        if current_loss < self.best_loss:
+            self.best_loss = current_loss
+            self.best_weights = self.model.get_weights()
+            self.wait = 0
+        else:
+            self.wait += 1
+            if self.wait >= self.patience:
+                # Restore the best weights
+                self.model.set_weights(self.best_weights)
+                self.wait = 0
+                # Unfreeze the last few layers
+                for layer in self.base_model.layers[-self.unfreeze_layers:]:
+                    if hasattr(layer, 'trainable'):
+                        layer.trainable = True
+                # Recompile the model to apply the changes
+                self.model.compile(optimizer=Adam(learning_rate=1e-5))
+
+# Create the embedding model and freeze layers
+embedding_model = get_embedding_module(image_size)
 # Freeze all layers initially
 for layer in embedding_model.layers:
     layer.trainable = False
-# Unfreeze last few layers
-for layer in embedding_model.layers[-unfreeze_layers:]:
+# Unfreeze last 20 layers
+for layer in embedding_model.layers[-20:]:
     layer.trainable = True
 
 # Create the siamese network
-siamese_architecture = SiameseArchitecture(input_shape=image_size + (3,), embedding_model=embedding_model)
-siamese_network = siamese_architecture.create_siamese_network()
+siamese_network = get_siamese_network(image_size, embedding_model)
 
 # Initialize the Siamese model
 loss_tracker = Mean(name="loss")
@@ -98,20 +128,20 @@ embedding_checkpoint = ModelCheckpoint(
     monitor='val_loss',
     verbose=1
 )
-fine_tune_callback = FineTuneCallback(embedding_model, patience=patience, unfreeze_layers=unfreeze_layers)
+fine_tune_callback = FineTuneCallback(embedding_model, patience=5, unfreeze_layers=10)
 
 # Create models directory if it doesn't exist
 os.makedirs('models', exist_ok=True)
 
 # Compile the model
-siamese_model.compile(optimizer=Adam(learning_rate=learning_rate), loss=triplet_loss(margin=margin))
+siamese_model.compile(optimizer=Adam())
 
 # Train the model
 history = siamese_model.fit(
     train_generator,
     validation_data=val_generator,
-    epochs=epochs,
-    initial_epoch=initial_epoch,
+    epochs=40,
+    initial_epoch=20,
     callbacks=[
         reduce_lr, 
         early_stopping, 
