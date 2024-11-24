@@ -124,3 +124,23 @@ history = siamese_model.fit(
 
 # Save the final embedding model
 embedding_model.save('models/final_embedding_model.h5')
+
+# Function to load LFW dataset
+def load_lfw_dataset(data_dir):
+    image_paths = []
+    labels = []
+
+    for label in os.listdir(data_dir):
+        label_dir = os.path.join(data_dir, label)
+        if os.path.isdir(label_dir):
+            for image_name in os.listdir(label_dir):
+                image_paths.append(os.path.join(label_dir, image_name))
+                labels.append(label)
+
+    return image_paths, labels
+
+# Example usage
+if __name__ == "__main__":
+    data_dir = "path/to/your/dataset"
+    image_paths, labels = load_lfw_dataset(data_dir)
+    print(f"Loaded {len(image_paths)} images from LFW dataset")
