@@ -1,24 +1,3 @@
-# DeepTuner
-
-## Description
-
-DeepTuner is an open source Python package for fine-tuning computer vision (CV) based deep models using Siamese architecture with a triplet loss function. The package supports various model backbones and provides tools for data preprocessing and evaluation metrics.
-
-## Installation
-
-To install the package, use the following command:
-
-```bash
-pip install DeepTuner
-```
-
-## Usage
-
-### Fine-tuning Models with Siamese Architecture and Triplet Loss
-
-Here is an example of how to use the package for fine-tuning models with Siamese architecture and triplet loss:
-
-```python
 import os
 import json
 from sklearn.model_selection import train_test_split
@@ -145,25 +124,3 @@ history = siamese_model.fit(
 
 # Save the final embedding model
 embedding_model.save('models/final_embedding_model.h5')
-```
-
-### Using Configuration Files
-
-To make it easier to experiment with different hyperparameter settings, you can use a configuration file (e.g., JSON) to store hyperparameters. Here is an example of a configuration file (`config.json`):
-
-```json
-{
-    "data_dir": "path/to/your/dataset",
-    "image_size": [224, 224],
-    "batch_size": 32,
-    "margin": 1.0,
-    "epochs": 50,
-    "initial_epoch": 0,
-    "learning_rate": 0.001,
-    "patience": 5,
-    "unfreeze_layers": 10,
-    "project_name": "DeepTuner"
-}
-```
-
-You can then load this configuration file in your code as shown in the usage example above.
