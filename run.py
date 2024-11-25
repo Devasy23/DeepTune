@@ -7,6 +7,7 @@ from tensorflow.keras.callbacks import ReduceLROnPlateau, EarlyStopping, ModelCh
 from wandb.integration.keras import WandbMetricsLogger
 import wandb
 
+from deeptuner.siamese_network import SiameseModel
 from deeptuner.backbones.resnet import ResNetBackbone
 from deeptuner.architectures.siamese import SiameseArchitecture
 from deeptuner.losses.triplet_loss import triplet_loss
@@ -82,23 +83,11 @@ loss_tracker = Mean(name="loss")
 siamese_model = SiameseModel(siamese_network, margin, loss_tracker)
 
 # Set up callbacks
-reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=3, min_lr=1e-7, verbose=1)
-early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True, verbose=1)
-model_checkpoint = ModelCheckpoint(
-    "models/best_siamese_model.weights.h5", 
-    save_best_only=True, 
-    save_weights_only=True, 
-    monitor='val_loss', 
-    verbose=1
-)
-embedding_checkpoint = ModelCheckpoint(
-    "models/best_embedding_model.weights.h5",
-    save_best_only=True,
-    save_weights_only=True,
-    monitor='val_loss',
-    verbose=1
-)
-fine_tune_callback = FineTuneCallback(embedding_model, patience=patience, unfreeze_layers=unfreeze_layers)
+reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, min_lr=1e-6)
+early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
+model_checkpoint = ModelCheckpoint('models/best_model.h5', monitor='val_loss', save_best_only=True)
+embedding_checkpoint = ModelCheckpoint('models/best_embedding_model.h5', monitor='val_loss', save_best_only=True)
+fine_tune_callback = FineTuneCallback(embedding_model, patience=patience, unfreeze_layers=unfreeze_layers, margin=margin)
 
 # Create models directory if it doesn't exist
 os.makedirs('models', exist_ok=True)
