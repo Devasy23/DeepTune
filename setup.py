@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='deeptuner',
-    version='0.1.8',
+    version='0.1.9',
     author='Devasy Patel',
     author_email='patel.devasy.23@gmail.com',
     description='A package for fine-tuning deep learning models with Siamese architecture and triplet loss',
