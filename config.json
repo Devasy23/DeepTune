@@ -8,5 +8,10 @@
     "learning_rate": 0.001,
     "patience": 5,
     "unfreeze_layers": 10,
-    "project_name": "DeepTuner"
+    "project_name": "DeepTuner",
+    "backbone": "resnet",
+    "loss_function": "triplet_loss",
+    "fine_tune_learning_rate": 1e-6,
+    "scale": 64.0,
+    "margin": 0.5
 }

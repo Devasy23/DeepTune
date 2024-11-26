@@ -15,7 +15,7 @@ class FineTuneCallback(Callback):
 
     def on_epoch_end(self, epoch, logs=None):
         current_loss = logs.get('val_loss')
-        if current_loss < self.best_loss:
+        if current_loss is not None and current_loss < self.best_loss:
             self.best_loss = current_loss
             self.best_weights = self.model.get_weights()
             self.wait = 0

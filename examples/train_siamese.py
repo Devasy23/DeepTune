@@ -7,9 +7,9 @@ from tensorflow.keras.callbacks import ReduceLROnPlateau, EarlyStopping, ModelCh
 from wandb.integration.keras import WandbMetricsLogger
 import wandb
 
-from deeptuner.backbones.resnet import ResNetBackbone
+from deeptuner.backbones import ResNetBackbone, EfficientNetBackbone, MobileNetBackbone
 from deeptuner.architectures.siamese import SiameseArchitecture
-from deeptuner.losses.triplet_loss import triplet_loss
+from deeptuner.losses import triplet_loss, arcface_loss, contrastive_loss, center_loss, npair_loss
 from deeptuner.datagenerators.triplet_data_generator import TripletDataGenerator
 from deeptuner.callbacks.finetune_callback import FineTuneCallback
 
@@ -26,6 +26,11 @@ initial_epoch = config['initial_epoch']
 learning_rate = config['learning_rate']
 patience = config['patience']
 unfreeze_layers = config['unfreeze_layers']
+backbone_name = config['backbone']
+loss_function_name = config['loss_function']
+fine_tune_learning_rate = config['fine_tune_learning_rate']
+scale = config['scale']
+arcface_margin = config['arcface_margin']
 
 # Initialize W&B
 wandb.init(project=config['project_name'], config=config)
@@ -63,7 +68,15 @@ assert len(train_generator) > 0, "Training generator is empty!"
 assert len(val_generator) > 0, "Validation generator is empty!"
 
 # Create the embedding model and freeze layers
-backbone = ResNetBackbone(input_shape=image_size + (3,))
+if backbone_name == "resnet":
+    backbone = ResNetBackbone(input_shape=image_size + (3,))
+elif backbone_name == "efficientnet":
+    backbone = EfficientNetBackbone(input_shape=image_size + (3,))
+elif backbone_name == "mobilenet":
+    backbone = MobileNetBackbone(input_shape=image_size + (3,))
+else:
+    raise ValueError(f"Unsupported backbone: {backbone_name}")
+
 embedding_model = backbone.create_model()
 
 # Freeze all layers initially
@@ -103,8 +116,22 @@ fine_tune_callback = FineTuneCallback(embedding_model, patience=patience, unfree
 # Create models directory if it doesn't exist
 os.makedirs('models', exist_ok=True)
 
+# Select the loss function
+if loss_function_name == "triplet_loss":
+    loss_function = triplet_loss(margin=margin)
+elif loss_function_name == "arcface_loss":
+    loss_function = arcface_loss(scale=scale, margin=arcface_margin)
+elif loss_function_name == "contrastive_loss":
+    loss_function = contrastive_loss(margin=margin)
+elif loss_function_name == "center_loss":
+    loss_function = center_loss()
+elif loss_function_name == "npair_loss":
+    loss_function = npair_loss()
+else:
+    raise ValueError(f"Unsupported loss function: {loss_function_name}")
+
 # Compile the model
-siamese_model.compile(optimizer=Adam(learning_rate=learning_rate), loss=triplet_loss(margin=margin))
+siamese_model.compile(optimizer=Adam(learning_rate=learning_rate), loss=loss_function)
 
 # Train the model
 history = siamese_model.fit(
