@@ -1,24 +1,3 @@
-# DeepTuner
-
-## Description
-
-DeepTuner is an open source Python package for fine-tuning computer vision (CV) based deep models using Siamese architecture with a triplet loss function. The package supports various model backbones and provides tools for data preprocessing and evaluation metrics.
-
-## Installation
-
-To install the package, use the following command:
-
-```bash
-pip install DeepTuner
-```
-
-## Usage
-
-### Fine-tuning Models with Siamese Architecture and Triplet Loss
-
-Here is an example of how to use the package for fine-tuning models with Siamese architecture and triplet loss:
-
-```python
 import os
 import json
 from sklearn.model_selection import train_test_split
@@ -28,6 +7,7 @@ from tensorflow.keras.callbacks import ReduceLROnPlateau, EarlyStopping, ModelCh
 from wandb.integration.keras import WandbMetricsLogger
 import wandb
 
+from deeptuner.siamese_network import SiameseModel
 from deeptuner.backbones.resnet import ResNetBackbone
 from deeptuner.architectures.siamese import SiameseArchitecture
 from deeptuner.losses.triplet_loss import triplet_loss
@@ -103,23 +83,11 @@ loss_tracker = Mean(name="loss")
 siamese_model = SiameseModel(siamese_network, margin, loss_tracker)
 
 # Set up callbacks
-reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=3, min_lr=1e-7, verbose=1)
-early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True, verbose=1)
-model_checkpoint = ModelCheckpoint(
-    "models/best_siamese_model.weights.h5", 
-    save_best_only=True, 
-    save_weights_only=True, 
-    monitor='val_loss', 
-    verbose=1
-)
-embedding_checkpoint = ModelCheckpoint(
-    "models/best_embedding_model.weights.h5",
-    save_best_only=True,
-    save_weights_only=True,
-    monitor='val_loss',
-    verbose=1
-)
-fine_tune_callback = FineTuneCallback(embedding_model, patience=patience, unfreeze_layers=unfreeze_layers)
+reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, min_lr=1e-6)
+early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
+model_checkpoint = ModelCheckpoint('models/best_model.h5', monitor='val_loss', save_best_only=True)
+embedding_checkpoint = ModelCheckpoint('models/best_embedding_model.h5', monitor='val_loss', save_best_only=True)
+fine_tune_callback = FineTuneCallback(embedding_model, patience=patience, unfreeze_layers=unfreeze_layers, margin=margin)
 
 # Create models directory if it doesn't exist
 os.makedirs('models', exist_ok=True)
@@ -145,25 +113,3 @@ history = siamese_model.fit(
 
 # Save the final embedding model
 embedding_model.save('models/final_embedding_model.h5')
-```
-
-### Using Configuration Files
-
-To make it easier to experiment with different hyperparameter settings, you can use a configuration file (e.g., JSON) to store hyperparameters. Here is an example of a configuration file (`config.json`):
-
-```json
-{
-    "data_dir": "path/to/your/dataset",
-    "image_size": [224, 224],
-    "batch_size": 32,
-    "margin": 1.0,
-    "epochs": 50,
-    "initial_epoch": 0,
-    "learning_rate": 0.001,
-    "patience": 5,
-    "unfreeze_layers": 10,
-    "project_name": "DeepTuner"
-}
-```
-
-You can then load this configuration file in your code as shown in the usage example above.
