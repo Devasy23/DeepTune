@@ -1,0 +1,86 @@
+name: Publish Python 🐍 distributions 📦 to PyPI
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  extract-tag:  
+    runs-on: ubuntu-latest  
+    outputs:  
+      version: ${{ steps.extract_tag.outputs.tag }}  
+    steps:  
+      - uses: actions/checkout@v4
+      - id: extract_tag  
+        name: Extract tag name  
+        run: echo "::set-output name=tag::$(echo $GITHUB_REF | cut -d / -f 3)"  
+
+  build-and-publish-test-pypi:
+    needs: extract-tag
+    runs-on: ubuntu-latest
+    environment: 
+      name: pypi
+    permissions:
+      id-token: write  # IMPORTANT: mandatory for trusted publishing
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.9"
+      - name: Install dependencies
+        run: python3 -m pip install setuptools wheel twine semver packaging
+      - name: Get correct version for TestPyPI release  
+        id: check_version  
+        run: |  
+          VERSION=${{ needs.extract-tag.outputs.version }}  
+          PACKAGE_NAME="deeptuner-test"
+          echo "Checking if $VERSION for $PACKAGE_NAME exists on TestPyPI"  
+          NEW_VERSION=$(python3 .github/workflows/build_utils/test_version.py $PACKAGE_NAME $VERSION)  
+          echo "Version to be used for TestPyPI release: $NEW_VERSION"  
+          echo "::set-output name=version::$NEW_VERSION"  
+      - name: Update version in setup.py
+        run: sed -i 's/version="[^"]*"/version="${{ steps.check_version.outputs.version }}"/' setup.py
+      - name: Update version in pyproject.toml
+        run: sed -i 's/version = "[^"]*"/version = "${{ steps.check_version.outputs.version }}"/' pyproject.toml        
+      - name: Update package name in setup.py
+        run: sed -i 's/name="[^"]*"/name="deeptuner-test"/' setup.py 
+      - name: Update package name in pyproject.toml
+        run: sed -i 's/name = "[^"]*"/name = "deeptuner-test"/' pyproject.toml  
+      - name: Build a binary wheel
+        run: python3 setup.py sdist bdist_wheel
+      - name: Publish distribution 📦 to test-PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with: 
+          repository-url: https://test.pypi.org/legacy/
+
+  build-and-publish-pypi:
+    needs: [extract-tag, build-and-publish-test-pypi]
+    runs-on: ubuntu-latest
+    environment: 
+      name: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.9"
+      - name: Install dependencies
+        run: python3 -m pip install setuptools wheel twine
+      - name: Update version in setup.py
+        run: sed -i 's/version="[^"]*"/version="${{ needs.extract-tag.outputs.version }}"/' setup.py
+      - name: Update version in pyproject.toml
+        run: sed -i 's/version = "[^"]*"/version = "${{ needs.extract-tag.outputs.version }}"/' pyproject.toml
+      - name: Update package name in setup.py  
+        run: sed -i 's/name="[^"]*"/name="deeptuner"/' setup.py
+      - name: Update package name in pyproject.toml
+        run: sed -i 's/name = "[^"]*"/name = "deeptuner"/' pyproject.toml
+      - name: Build a binary wheel
+        run: python3 setup.py sdist bdist_wheel
+      - name: Publish distribution 📦 to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with: 
+          attestations: false

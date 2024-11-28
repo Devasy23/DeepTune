@@ -1,0 +1,17 @@
+{
+    "data_dir": "datasets/lfw_processed",
+    "image_size": [224, 224],
+    "batch_size": 32,
+    "margin": 10.0,
+    "epochs": 50,
+    "initial_epoch": 0,
+    "learning_rate": 0.001,
+    "patience": 5,
+    "unfreeze_layers": 10,
+    "project_name": "DeepTuner",
+    "backbone": "resnet",
+    "loss_function": "triplet_loss",
+    "fine_tune_learning_rate": 1e-6,
+    "scale": 64.0,
+    "margin": 0.5
+}
