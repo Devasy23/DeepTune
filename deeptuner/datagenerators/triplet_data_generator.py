@@ -5,7 +5,8 @@ import numpy as np
 from tensorflow.keras.applications import resnet50 as resnet
 
 class TripletDataGenerator(tf.keras.utils.Sequence):
-    def __init__(self, image_paths, labels, batch_size, image_size, num_classes):
+    def __init__(self, image_paths, labels, batch_size, image_size, num_classes, **kwargs):
+        super().__init__(**kwargs)
         self.image_paths = image_paths
         self.labels = labels
         self.batch_size = batch_size
