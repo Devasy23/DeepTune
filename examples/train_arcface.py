@@ -6,9 +6,12 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import ReduceLROnPlateau, EarlyStopping, ModelCheckpoint
 from wandb.integration.keras import WandbMetricsLogger
 import wandb
+import shutil
+from pathlib import Path
 
 from deeptuner.backbones.resnet import ResNetBackbone
 from deeptuner.losses.arcface_loss import ArcFaceModel, arcface_loss, ArcFaceLayer
+from deeptuner.datagenerators.arcface_generator import ArcFaceDataGenerator
 
 config = {
     "data_dir": "/kaggle/input/indian-actor-faces-for-face-recognition/actors_dataset/Indian_actors_faces",
@@ -40,53 +43,75 @@ arcface_scale = config['arcface_scale']
 # Initialize W&B
 wandb.init(project=config['project_name'], config=config)
 
-# Load and preprocess the data
-image_paths = []
-labels = []
-label_to_id = {}
-current_id = 0
+# Create train and validation directories
+train_dir = Path('temp_train')
+val_dir = Path('temp_val')
 
-for label in os.listdir(data_dir):
-    label_dir = os.path.join(data_dir, label)
-    if os.path.isdir(label_dir):
-        if label not in label_to_id:
-            label_to_id[label] = current_id
-            current_id += 1
-        for image_name in os.listdir(label_dir):
-            image_paths.append(os.path.join(label_dir, image_name))
-            labels.append(label_to_id[label])
+# Clean up any existing temp directories
+if train_dir.exists():
+    shutil.rmtree(train_dir)
+if val_dir.exists():
+    shutil.rmtree(val_dir)
 
-num_classes = len(label_to_id)
-print(f"Found {len(image_paths)} images in {num_classes} classes")
+train_dir.mkdir(parents=True)
+val_dir.mkdir(parents=True)
 
-# Split the data into training and validation sets
-train_paths, val_paths, train_labels, val_labels = train_test_split(
-    image_paths, labels, test_size=0.2, stratify=labels, random_state=42
+# Load and split the data
+classes = [d for d in os.listdir(data_dir) if os.path.isdir(os.path.join(data_dir, d))]
+num_classes = len(classes)
+
+print(f"Found {num_classes} classes")
+
+# Split data and create temporary directory structure
+for class_name in classes:
+    class_dir = os.path.join(data_dir, class_name)
+    images = [f for f in os.listdir(class_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+    
+    # Split images into train and validation
+    train_images, val_images = train_test_split(
+        images, test_size=0.2, random_state=42
+    )
+    
+    # Create class directories in train and val
+    train_class_dir = train_dir / class_name
+    val_class_dir = val_dir / class_name
+    train_class_dir.mkdir(exist_ok=True)
+    val_class_dir.mkdir(exist_ok=True)
+    
+    # Copy images to respective directories
+    for img in train_images:
+        shutil.copy2(
+            os.path.join(class_dir, img),
+            train_class_dir / img
+        )
+    for img in val_images:
+        shutil.copy2(
+            os.path.join(class_dir, img),
+            val_class_dir / img
+        )
+
+print(f"Data split complete. Training directory: {train_dir}, Validation directory: {val_dir}")
+
+# Create data generators
+train_generator = ArcFaceDataGenerator(
+    data_dir=str(train_dir),
+    batch_size=batch_size,
+    image_size=image_size,
+    augment=True,
+    cache=True
 )
 
-print(f"Training on {len(train_paths)} images")
-print(f"Validating on {len(val_paths)} images")
+val_generator = ArcFaceDataGenerator(
+    data_dir=str(val_dir),
+    batch_size=batch_size,
+    image_size=image_size,
+    augment=False,
+    cache=True
+)
 
-# Create data loading pipeline
-def parse_image(image_path, label):
-    image = tf.io.read_file(image_path)
-    image = tf.io.decode_jpeg(image, channels=3)
-    image = tf.image.resize(image, image_size)
-    image = tf.cast(image, tf.float32)
-    image = (image - 127.5) / 128.0
-    return image, label
-
-# Create tf.data.Dataset
-train_dataset = tf.data.Dataset.from_tensor_slices((train_paths, train_labels))
-train_dataset = train_dataset.shuffle(buffer_size=len(train_paths))
-train_dataset = train_dataset.map(parse_image, num_parallel_calls=tf.data.AUTOTUNE)
-train_dataset = train_dataset.batch(batch_size)
-train_dataset = train_dataset.prefetch(tf.data.AUTOTUNE)
-
-val_dataset = tf.data.Dataset.from_tensor_slices((val_paths, val_labels))
-val_dataset = val_dataset.map(parse_image, num_parallel_calls=tf.data.AUTOTUNE)
-val_dataset = val_dataset.batch(batch_size)
-val_dataset = val_dataset.prefetch(tf.data.AUTOTUNE)
+# Create datasets
+train_dataset = train_generator.create_dataset(is_training=True)
+val_dataset = val_generator.create_dataset(is_training=False)
 
 # Create the backbone model
 backbone = ResNetBackbone(input_shape=image_size + (3,))
@@ -143,9 +168,15 @@ history = model.fit(
     validation_data=val_dataset,
     epochs=epochs,
     initial_epoch=initial_epoch,
-    callbacks=callbacks
+    callbacks=callbacks,
+    steps_per_epoch=train_generator.steps_per_epoch
 )
 
 # Save the final model
 model.save('models/final_arcface_model.keras')
+
+# Clean up temporary directories
+shutil.rmtree(train_dir)
+shutil.rmtree(val_dir)
+
 print("Training completed!")
